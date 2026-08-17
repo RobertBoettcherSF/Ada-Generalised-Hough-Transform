@@ -113,9 +113,10 @@ package body Generalised_Hough_Transform is
                for E of Target_Edges loop
                   Idx := To_Degree_Index (E.Gradient_Direction);
                   
-                  for Entry of Table.Entries (Idx) loop
-                     Alpha_Prime := Float (Entry.Alpha) + Float (Theta);
-                     Current_Radius := Float (Entry.Radius) * Float (S);
+                  -- Changed from "Entry" to "Item" since "entry" is a reserved Ada keyword
+                  for Item of Table.Entries (Idx) loop
+                     Alpha_Prime := Float (Item.Alpha) + Float (Theta);
+                     Current_Radius := Float (Item.Radius) * Float (S);
                      
                      -- Compute candidate reference point
                      Xc := Integer (Float'Rounding (Float (E.Location.X) - Current_Radius * Cos (Alpha_Prime)));
