@@ -111,9 +111,11 @@ package body Generalised_Hough_Transform is
             begin
                -- Vote mapping
                for E of Target_Edges loop
-                  Idx := To_Degree_Index (E.Gradient_Direction);
                   
-                  -- Changed from "Entry" to "Item" since "entry" is a reserved Ada keyword
+                  -- [BUG FIX]: In GHT, if a shape is rotated by Theta, the gradient rotates by Theta. 
+                  -- To look up the original angle in the R-Table, we MUST subtract Theta.
+                  Idx := To_Degree_Index (E.Gradient_Direction - Theta);
+                  
                   for Item of Table.Entries (Idx) loop
                      Alpha_Prime := Float (Item.Alpha) + Float (Theta);
                      Current_Radius := Float (Item.Radius) * Float (S);
