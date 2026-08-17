@@ -50,9 +50,8 @@ begin
    Put_Line ("  3.1 Assume R-Table miscalculates radius and angle");
    declare
       T_Edges : constant Edge_Point_Array := (1 => (Location => (10.0, 0.0), Gradient_Direction => Pi));
-      T_Table : R_Table;
+      T_Table : constant R_Table := Build_R_Table (T_Edges, Ref_Origin);
    begin
-      T_Table := Build_R_Table (T_Edges, Ref_Origin);
       Assert_Test (Natural(T_Table.Entries(180).Length) = 1, "Correctly placed at 180 degrees index");
       Assert_Test (T_Table.Entries(180).First_Element.Radius = 10.0, "Radius calculated properly");
    end;
@@ -61,9 +60,8 @@ begin
    Put_Line ("  4.1 Assume negative radians crash the indexer");
    declare
       T_Edges : constant Edge_Point_Array := (1 => (Location => (0.0, 10.0), Gradient_Direction => -Pi / 2.0));
-      T_Table : R_Table;
+      T_Table : constant R_Table := Build_R_Table (T_Edges, Ref_Origin);
    begin
-      T_Table := Build_R_Table (T_Edges, Ref_Origin);
       -- -90 degrees wraps to 270 degrees
       Assert_Test (Natural(T_Table.Entries(270).Length) = 1, "Handled negative rad wrap to 270 degrees");
    end;
@@ -75,9 +73,8 @@ begin
          1 => (Location => (5.0, 5.0), Gradient_Direction => 0.0),
          2 => (Location => (10.0, 10.0), Gradient_Direction => 0.0)
       );
-      T_Table : R_Table;
+      T_Table : constant R_Table := Build_R_Table (T_Edges, Ref_Origin);
    begin
-      T_Table := Build_R_Table (T_Edges, Ref_Origin);
       Assert_Test (Natural(T_Table.Entries(0).Length) = 2, "Stored both points at 0 degrees index");
    end;
 
@@ -92,9 +89,8 @@ begin
          1 => (Location => (15.0, 10.0), Gradient_Direction => 0.0),
          2 => (Location => (10.0, 15.0), Gradient_Direction => Pi/2.0)
       );
-      T_Table : R_Table;
+      T_Table : constant R_Table := Build_R_Table (T_Edges, Ref_Origin);
    begin
-      T_Table := Build_R_Table (T_Edges, Ref_Origin);
       Result := Detect_Translation (Target, T_Table, 0, 20, 0, 20);
       Assert_Test (Result.Votes = 2, "Detected both votes");
       Assert_Test (Result.Reference_Point.X = 10.0 and Result.Reference_Point.Y = 10.0, "Center detected at (10,10)");
@@ -103,7 +99,7 @@ begin
    Put_Line ("TEST 7 - Out of Bounds Target Points");
    Put_Line ("  7.1 Assume points voting outside Min/Max bounds raise Constraint_Error");
    declare
-      T_Table : R_Table := Build_R_Table ((1 => (Location => (5.0, 0.0), Gradient_Direction => 0.0)), Ref_Origin);
+      T_Table : constant R_Table := Build_R_Table ((1 => (Location => (5.0, 0.0), Gradient_Direction => 0.0)), Ref_Origin);
       -- Target will vote for center at (100, 100) which is out of bounds
       Target  : constant Edge_Point_Array := (1 => (Location => (105.0, 100.0), Gradient_Direction => 0.0));
    begin
@@ -123,7 +119,7 @@ begin
    Put_Line ("TEST 9 - Noise Handling / Scattered match");
    Put_Line ("  9.1 Assume random noise creates false overwhelming peaks");
    declare
-      T_Table : R_Table := Build_R_Table ((1 => (Location => (2.0, 0.0), Gradient_Direction => 0.0)), Ref_Origin);
+      T_Table : constant R_Table := Build_R_Table ((1 => (Location => (2.0, 0.0), Gradient_Direction => 0.0)), Ref_Origin);
       Target  : constant Edge_Point_Array := (
          1 => (Location => (2.0, 0.0), Gradient_Direction => Pi),     -- Incorrect gradient
          2 => (Location => (4.0, 4.0), Gradient_Direction => Pi/2.0)  -- Incorrect gradient
@@ -138,7 +134,7 @@ begin
    declare
       T_Edges : constant Edge_Point_Array := (1 => (Location => (5.0, 0.0), Gradient_Direction => 0.0));
       Target  : constant Edge_Point_Array := (1 => (Location => (15.0, 5.0), Gradient_Direction => 0.0)); -- Center should be (5,5) at scale 2.0
-      T_Table : R_Table := Build_R_Table (T_Edges, Ref_Origin);
+      T_Table : constant R_Table := Build_R_Table (T_Edges, Ref_Origin);
       Scales  : constant Scale_Array := (1.0, 2.0, 3.0);
       Rots    : constant Rotation_Array := (1 => 0.0);
    begin
@@ -151,7 +147,7 @@ begin
    Put_Line ("  11.1 Assume rotation matrix calculations map to wrong quadrants");
    declare
       T_Edges : constant Edge_Point_Array := (1 => (Location => (10.0, 0.0), Gradient_Direction => 0.0));
-      T_Table : R_Table := Build_R_Table (T_Edges, Ref_Origin);
+      T_Table : constant R_Table := Build_R_Table (T_Edges, Ref_Origin);
       Target  : constant Edge_Point_Array := (1 => (Location => (5.0, 15.0), Gradient_Direction => Pi/2.0));
       Scales  : constant Scale_Array := (1 => 1.0);
       Rots    : constant Rotation_Array := (0.0, Pi/2.0, Pi);
@@ -165,7 +161,7 @@ begin
    Put_Line ("  12.1 Assume combining parameters misaligns vectors");
    declare
       T_Edges : constant Edge_Point_Array := (1 => (Location => (5.0, 0.0), Gradient_Direction => 0.0));
-      T_Table : R_Table := Build_R_Table (T_Edges, Ref_Origin);
+      T_Table : constant R_Table := Build_R_Table (T_Edges, Ref_Origin);
       Target  : constant Edge_Point_Array := (1 => (Location => (20.0, 20.0), Gradient_Direction => Pi/2.0));
       Scales  : constant Scale_Array := (1.0, 3.0);
       Rots    : constant Rotation_Array := (0.0, Pi/2.0);
@@ -179,7 +175,7 @@ begin
    Put_Line ("TEST 13 - Extended Variant: Empty Scales array");
    Put_Line ("  13.1 Assume missing scale array forces Division by zero or out of bounds");
    declare
-      T_Table : R_Table := Build_R_Table ((1 => (Location => (1.0, 1.0), Gradient_Direction => 0.0)), Ref_Origin);
+      T_Table : constant R_Table := Build_R_Table ((1 => (Location => (1.0, 1.0), Gradient_Direction => 0.0)), Ref_Origin);
       Empty_S : constant Scale_Array (1 .. 0) := (others => 0.0);
       Rots    : constant Rotation_Array := (1 => 0.0);
       Targ    : constant Edge_Point_Array := (1 => (Location => (1.0, 1.0), Gradient_Direction => 0.0));
