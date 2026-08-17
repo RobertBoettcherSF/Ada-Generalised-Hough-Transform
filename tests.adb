@@ -4,15 +4,12 @@ with Generalised_Hough_Transform; use Generalised_Hough_Transform;
 
 procedure Tests is
 
-   -- Test Output Formatting Helper
    procedure Assert_Test (Condition : Boolean; Message : String) is
    begin
       if Condition then
          Put_Line ("      PASS: " & Message);
       else
          Put_Line ("      FAIL: " & Message);
-         -- In a strict CI, we might raise an error here. 
-         -- For terminal visibility, we print and continue to execute other tests.
       end if;
    end Assert_Test;
 
@@ -38,7 +35,6 @@ begin
    Put_Line ("TEST 2 - Exception Handling: Empty Target Array");
    Put_Line ("  2.1 Assume code crashes during accumulation loop without data");
    begin
-      -- Must have a dummy valid table for this test
       Table := Build_R_Table ((1 => (Location => (1.0, 1.0), Gradient_Direction => 0.0)), Ref_Origin);
       Result := Detect_Translation (Empty_Edges, Table, 0, 10, 0, 10);
       Assert_Test (False, "Should have raised Invalid_Data_Error");
@@ -62,7 +58,6 @@ begin
       T_Edges : constant Edge_Point_Array := (1 => (Location => (0.0, 10.0), Gradient_Direction => -Pi / 2.0));
       T_Table : constant R_Table := Build_R_Table (T_Edges, Ref_Origin);
    begin
-      -- -90 degrees wraps to 270 degrees
       Assert_Test (Natural(T_Table.Entries(270).Length) = 1, "Handled negative rad wrap to 270 degrees");
    end;
 
@@ -100,7 +95,6 @@ begin
    Put_Line ("  7.1 Assume points voting outside Min/Max bounds raise Constraint_Error");
    declare
       T_Table : constant R_Table := Build_R_Table ((1 => (Location => (5.0, 0.0), Gradient_Direction => 0.0)), Ref_Origin);
-      -- Target will vote for center at (100, 100) which is out of bounds
       Target  : constant Edge_Point_Array := (1 => (Location => (105.0, 100.0), Gradient_Direction => 0.0));
    begin
       Result := Detect_Translation (Target, T_Table, 0, 10, 0, 10);
@@ -121,19 +115,26 @@ begin
    declare
       T_Table : constant R_Table := Build_R_Table ((1 => (Location => (2.0, 0.0), Gradient_Direction => 0.0)), Ref_Origin);
       Target  : constant Edge_Point_Array := (
-         1 => (Location => (2.0, 0.0), Gradient_Direction => Pi),     -- Incorrect gradient
-         2 => (Location => (4.0, 4.0), Gradient_Direction => Pi/2.0)  -- Incorrect gradient
+         1 => (Location => (2.0, 0.0), Gradient_Direction => Pi), 
+         2 => (Location => (4.0, 4.0), Gradient_Direction => Pi/2.0) 
       );
    begin
       Result := Detect_Translation (Target, T_Table, 0, 10, 0, 10);
       Assert_Test (Result.Votes = 0, "No false positives from misaligned gradients");
    end;
 
+   -- [FIXED]: Now using two intersecting points to ensure we get a peak of 2, overriding all single-vote noise.
    Put_Line ("TEST 10 - Extended Variant: Perfect Scale");
    Put_Line ("  10.1 Assume scaling math is incorrect and scaling shifts center incorrectly");
    declare
-      T_Edges : constant Edge_Point_Array := (1 => (Location => (5.0, 0.0), Gradient_Direction => 0.0));
-      Target  : constant Edge_Point_Array := (1 => (Location => (15.0, 5.0), Gradient_Direction => 0.0)); -- Center should be (5,5) at scale 2.0
+      T_Edges : constant Edge_Point_Array := (
+         1 => (Location => (5.0, 0.0), Gradient_Direction => 0.0),
+         2 => (Location => (0.0, 5.0), Gradient_Direction => Pi/2.0)
+      );
+      Target  : constant Edge_Point_Array := (
+         1 => (Location => (15.0, 5.0), Gradient_Direction => 0.0),
+         2 => (Location => (5.0, 15.0), Gradient_Direction => Pi/2.0)
+      );
       T_Table : constant R_Table := Build_R_Table (T_Edges, Ref_Origin);
       Scales  : constant Scale_Array := (1.0, 2.0, 3.0);
       Rots    : constant Rotation_Array := (1 => 0.0);
@@ -143,33 +144,47 @@ begin
       Assert_Test (Result.Reference_Point.X = 5.0 and Result.Reference_Point.Y = 5.0, "Scaled Reference point accurate");
    end;
 
+   -- [FIXED]: Updated point geometries to reflect 90-degree template rotation explicitly generating a peak of 2.
    Put_Line ("TEST 11 - Extended Variant: Perfect Rotation");
    Put_Line ("  11.1 Assume rotation matrix calculations map to wrong quadrants");
    declare
-      T_Edges : constant Edge_Point_Array := (1 => (Location => (10.0, 0.0), Gradient_Direction => 0.0));
+      T_Edges : constant Edge_Point_Array := (
+         1 => (Location => (10.0, 0.0), Gradient_Direction => 0.0),
+         2 => (Location => (0.0, 10.0), Gradient_Direction => Pi/2.0)
+      );
       T_Table : constant R_Table := Build_R_Table (T_Edges, Ref_Origin);
-      Target  : constant Edge_Point_Array := (1 => (Location => (5.0, 15.0), Gradient_Direction => Pi/2.0));
+      Target  : constant Edge_Point_Array := (
+         1 => (Location => (10.0, 20.0), Gradient_Direction => Pi/2.0),
+         2 => (Location => (0.0, 10.0), Gradient_Direction => Pi)
+      );
       Scales  : constant Scale_Array := (1 => 1.0);
       Rots    : constant Rotation_Array := (0.0, Pi/2.0, Pi);
    begin
       Result := Detect_Extended (Target, T_Table, 0, 20, 0, 20, Scales, Rots);
       Assert_Test (Result.Rotation = Pi/2.0, "Rotation Pi/2 accurately matched");
-      Assert_Test (Result.Reference_Point.X = 5.0 and Result.Reference_Point.Y = 5.0, "Rotated Reference point accurate");
+      Assert_Test (Result.Reference_Point.X = 10.0 and Result.Reference_Point.Y = 10.0, "Rotated Reference point accurate");
    end;
 
+   -- [FIXED]: Generating a 2-point vote utilizing both 3.0 scale AND 90-degree rotation matrices simultaneously. 
    Put_Line ("TEST 12 - Extended Variant: Combined Scale & Rotation");
    Put_Line ("  12.1 Assume combining parameters misaligns vectors");
    declare
-      T_Edges : constant Edge_Point_Array := (1 => (Location => (5.0, 0.0), Gradient_Direction => 0.0));
+      T_Edges : constant Edge_Point_Array := (
+         1 => (Location => (5.0, 0.0), Gradient_Direction => 0.0),
+         2 => (Location => (0.0, 5.0), Gradient_Direction => Pi/2.0)
+      );
       T_Table : constant R_Table := Build_R_Table (T_Edges, Ref_Origin);
-      Target  : constant Edge_Point_Array := (1 => (Location => (20.0, 20.0), Gradient_Direction => Pi/2.0));
+      Target  : constant Edge_Point_Array := (
+         1 => (Location => (20.0, 35.0), Gradient_Direction => Pi/2.0),
+         2 => (Location => (5.0, 20.0), Gradient_Direction => Pi)
+      );
       Scales  : constant Scale_Array := (1.0, 3.0);
       Rots    : constant Rotation_Array := (0.0, Pi/2.0);
    begin
-      Result := Detect_Extended (Target, T_Table, 0, 30, 0, 30, Scales, Rots);
+      Result := Detect_Extended (Target, T_Table, 0, 40, 0, 40, Scales, Rots);
       Assert_Test (Result.Scale = 3.0, "Combined: scale correct");
       Assert_Test (Result.Rotation = Pi/2.0, "Combined: rotation correct");
-      Assert_Test (Result.Reference_Point.X = 20.0 and Result.Reference_Point.Y = 5.0, "Combined: reference point correct");
+      Assert_Test (Result.Reference_Point.X = 20.0 and Result.Reference_Point.Y = 20.0, "Combined: reference point correct");
    end;
 
    Put_Line ("TEST 13 - Extended Variant: Empty Scales array");
